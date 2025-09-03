@@ -1,4 +1,3 @@
-
 const ALL_RULE_ID = 1;
 const ALLOW_BASE_ID = 1000;
 const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com"];
@@ -32,15 +31,19 @@ function normalizeDomain(d) {
 async function applyRules(allowedList) {
   allowedList = (allowedList && allowedList.length ? allowedList : ALLOWED_DEFAULT).map(normalizeDomain);
 
+  const blockedUrl = chrome.runtime.getURL("blocked/blocked.html");
+  // Use a regex rule so we can substitute the original URL into the query param
   const redirectAllRule = {
     id: ALL_RULE_ID,
     priority: 1,
     action: {
       type: "redirect",
-      redirect: { extensionPath: "/blocked/blocked.html" }
+      redirect: {
+        regexSubstitution: `${blockedUrl}?previousUrl=\\0`
+      }
     },
     condition: {
-      regexFilter: "^(http|https)://.*",
+      regexFilter: "^(https?|file)://.*",
       resourceTypes: ["main_frame"]
     }
   };
