@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <title>Strict Session</title>
   <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="blocked/blocked.css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
@@ -20,7 +21,13 @@
     </div>
 
     <div id="active" class="active hidden">
-      <div class="countdown" id="countdown">--:--</div>
+      <div class="ring">
+        <svg viewBox="0 0 160 160" width="240" height="240" aria-hidden="true">
+          <circle class="track" cx="80" cy="80" r="70"></circle>
+          <circle class="progress" id="progress" cx="80" cy="80" r="70"></circle>
+          <text id="time" x="80" y="88" text-anchor="middle">--:--</text>
+        </svg>
+      </div>
     </div>
 
     <div id="start" class="start">
