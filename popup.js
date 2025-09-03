@@ -6,6 +6,20 @@ function formatTime(ms) {
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
+// Added popup ring helpers (same geometry as blocked.js: r = 70)
+const POPUP_CIRC = 2 * Math.PI * 70;
+function setPopupProgress(fracElapsed) {
+  // Shrinking ring: 0 → full, 1 → empty
+  const offset = POPUP_CIRC * Math.min(1, Math.max(0, fracElapsed));
+  const ring = document.getElementById("progress");
+  if (ring) ring.style.strokeDashoffset = String(offset);
+}
+
+function setPopupTime(ms) {
+  const t = document.getElementById("time");
+  if (t) t.textContent = formatTime(ms);
+}
+
 async function getState() {
   return await chrome.runtime.sendMessage({ cmd: "getState" });
 }
@@ -25,15 +39,22 @@ async function refresh() {
   document.getElementById("start").style.display = active ? "none" : "block";
 
   if (active) {
-    const countdown = document.getElementById("countdown");
+    const end = state.endTime;
+    const total = state.totalMs || Math.max(1, end - Date.now());
+
     function tick() {
-      const left = state.endTime - Date.now();
-      countdown.textContent = formatTime(left);
+      const left = end - Date.now();
+      const fracElapsed = (total - left) / total;
+
+      setPopupTime(left);
+      setPopupProgress(fracElapsed);
+
       if (left <= 0) {
         clearInterval(timer);
         refresh();
       }
     }
+
     tick();
     const timer = setInterval(tick, 1000);
   }
