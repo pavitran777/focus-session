@@ -3,6 +3,46 @@ const ALLOW_BASE_ID = 1000;
 const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com"];
 const ALARM_NAME = "strict-session-end";
 
+// Badge updater functions
+let badgeTimer = null;
+
+function fmt(mm, ss) {
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
+async function updateBadgeOnce() {
+  const { strictActive, endTime } = await getState();
+  if (!strictActive || !endTime || endTime <= Date.now()) {
+    try { await chrome.action.setBadgeText({ text: "" }); } catch {}
+    return false;
+  }
+  const left = endTime - Date.now(); // ms
+  const totalSec = Math.max(0, Math.floor(left / 1000));
+  const mm = Math.floor(totalSec / 60);
+  const ss = totalSec % 60;
+
+  // keep it legible (badge is tiny). "mm:ss" fits well.
+  const text = fmt(mm, ss);
+  try {
+    await chrome.action.setBadgeBackgroundColor({ color: "#111" });
+    await chrome.action.setBadgeTextColor?.({ color: "#fff" });
+    await chrome.action.setBadgeText({ text });
+  } catch {}
+  return true;
+}
+
+function startBadgeUpdater() {
+  if (badgeTimer) clearInterval(badgeTimer);
+  // Update every second; if the service worker sleeps, it’ll catch up on next wake.
+  badgeTimer = setInterval(updateBadgeOnce, 1000);
+  updateBadgeOnce();
+}
+
+function stopBadgeUpdater() {
+  if (badgeTimer) { clearInterval(badgeTimer); badgeTimer = null; }
+  try { chrome.action.setBadgeText({ text: "" }); } catch {}
+}
+
 async function getState() {
   const data = await chrome.storage.local.get({
     strictActive: false,
@@ -82,6 +122,7 @@ async function startSession(durationMs) {
   await chrome.storage.local.set({ strictActive: true, endTime, totalMs: durationMs });
   await applyRules(allowedList);
   await chrome.alarms.create(ALARM_NAME, { when: endTime });
+  startBadgeUpdater();
   try {
     await chrome.action.setBadgeText({ text: "ON" });
   } catch (e) {}
@@ -91,6 +132,7 @@ async function stopSession() {
   await chrome.storage.local.set({ strictActive: false, endTime: 0, totalMs: 0 });
   await chrome.alarms.clear(ALARM_NAME);
   await clearRules();
+  stopBadgeUpdater();
   try {
     await chrome.action.setBadgeText({ text: "" });
   } catch (e) {}
@@ -113,6 +155,7 @@ async function ensureState() {
   if (strictActive && endTime > Date.now()) {
     await applyRules(allowedList);
     await chrome.alarms.create(ALARM_NAME, { when: endTime });
+    startBadgeUpdater();
     try { await chrome.action.setBadgeText({ text: "ON" }); } catch (e) {}
   } else {
     await stopSession();
