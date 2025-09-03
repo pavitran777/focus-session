@@ -1,0 +1,33 @@
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #111; }
+.wrap { max-width: 780px; margin: 0 auto; padding: 32px 16px; text-align: left; }
+h1 { font-size: 28px; margin: 0 0 4px; }
+.subtitle { color: #555; margin: 0 0 20px; }
+
+.ring { display: flex; justify-content: center; align-items: center; margin: 24px 0; }
+
+svg { display: block; }
+.track {
+  fill: none;
+  stroke: #eee;
+  stroke-width: 16;
+}
+.progress {
+  fill: none;
+  stroke: #111;
+  stroke-width: 16;
+  stroke-linecap: round;
+  stroke-dasharray: 439.82; /* 2 * PI * r => 2*π*70 ~ 439.82 */
+  stroke-dashoffset: 0;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+}
+#time {
+  font-size: 28px;
+  font-weight: 700;
+  fill: #111;
+}
+
+.footnote { color: #777; font-size: 13px; text-align: center; }
+.footnote a { color: inherit; }

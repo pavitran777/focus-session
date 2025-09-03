@@ -1,0 +1,27 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Strict Mode</title>
+  <link rel="stylesheet" href="blocked.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  <div class="wrap">
+    <h1>Strict Mode</h1>
+    <p class="subtitle">You can't access distracting websites until the timer ends.</p>
+
+    <div class="ring">
+      <svg viewBox="0 0 160 160" width="320" height="320">
+        <circle class="track" cx="80" cy="80" r="70"></circle>
+        <circle class="progress" id="progress" cx="80" cy="80" r="70"></circle>
+        <text id="time" x="80" y="88" text-anchor="middle">--:--</text>
+      </svg>
+    </div>
+
+    <p class="footnote">Open <a id="open-options" href="#">Allowed List</a> to change sites after the session ends.</p>
+  </div>
+  <script src="blocked.js"></script>
+</body>
+</html>
