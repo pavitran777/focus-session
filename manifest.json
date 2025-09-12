@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Strict Session Blocker",
+  "name": "Strict Focus - Time to Lock In",
   "version": "1.0.0",
   "description": "Blocks every site except your Allowed List during a timed focus session. Shows a circular countdown timer on blocked pages.",
   "permissions": [

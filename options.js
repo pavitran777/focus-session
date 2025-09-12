@@ -1,5 +1,5 @@
 
-const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com"];
+const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com", "chat.openai.com"];
 
 function normalizeDomain(d) {
   if (!d) return "";
