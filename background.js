@@ -1,13 +1,19 @@
 const ALL_RULE_ID = 1;
 const ALLOW_BASE_ID = 1000;
-const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com"];
+const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com", "chat.openai.com"];
 const ALARM_NAME = "strict-session-end";
 
 // Badge updater functions
 let badgeTimer = null;
 
-function fmt(mm, ss) {
-  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+// Formatter: if showHours is true we render "h:mm:ss" (hour not zero-padded),
+// otherwise we render "mm:ss".
+function fmt(h, mm, ss, showHours) {
+  if (showHours) {
+    return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  } else {
+    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  }
 }
 
 async function updateBadgeOnce() {
@@ -18,11 +24,14 @@ async function updateBadgeOnce() {
   }
   const left = endTime - Date.now(); // ms
   const totalSec = Math.max(0, Math.floor(left / 1000));
-  const mm = Math.floor(totalSec / 60);
+
+  // Show "h:mm:ss" only when >= 60 minutes (3600 seconds).
+  const showHours = totalSec >= 3600;
+  const h = Math.floor(totalSec / 3600);
+  const mm = Math.floor((totalSec % 3600) / 60);
   const ss = totalSec % 60;
 
-  // keep it legible (badge is tiny). "mm:ss" fits well.
-  const text = fmt(mm, ss);
+  const text = fmt(h, mm, ss, showHours);
   try {
     await chrome.action.setBadgeBackgroundColor({ color: "#111" });
     await chrome.action.setBadgeTextColor?.({ color: "#fff" });
