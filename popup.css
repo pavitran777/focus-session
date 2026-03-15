@@ -5,9 +5,16 @@
 body {
   width: 360px;
   margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: #111;
   background: #fff;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
 }
 
 .container {
