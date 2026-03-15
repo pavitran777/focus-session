@@ -19,7 +19,7 @@ function fmt(h, mm, ss, showHours) {
 async function updateBadgeOnce() {
   const { strictActive, endTime } = await getState();
   if (!strictActive || !endTime || endTime <= Date.now()) {
-    try { await chrome.action.setBadgeText({ text: "" }); } catch {}
+    try { await chrome.action.setBadgeText({ text: "" }); } catch { }
     return false;
   }
   const left = endTime - Date.now(); // ms
@@ -36,7 +36,7 @@ async function updateBadgeOnce() {
     await chrome.action.setBadgeBackgroundColor({ color: "#111" });
     await chrome.action.setBadgeTextColor?.({ color: "#fff" });
     await chrome.action.setBadgeText({ text });
-  } catch {}
+  } catch { }
   return true;
 }
 
@@ -49,7 +49,7 @@ function startBadgeUpdater() {
 
 function stopBadgeUpdater() {
   if (badgeTimer) { clearInterval(badgeTimer); badgeTimer = null; }
-  try { chrome.action.setBadgeText({ text: "" }); } catch {}
+  try { chrome.action.setBadgeText({ text: "" }); } catch { }
 }
 
 async function getState() {
@@ -77,8 +77,17 @@ function normalizeDomain(d) {
   }
 }
 
+function getEffectiveAllowedList(allowedList) {
+  const sourceList = Array.isArray(allowedList) ? allowedList : ALLOWED_DEFAULT;
+  return sourceList.map(normalizeDomain).filter(Boolean);
+}
+
+function isSessionActive(state) {
+  return Boolean(state && state.strictActive && state.endTime > Date.now());
+}
+
 async function applyRules(allowedList) {
-  allowedList = (allowedList && allowedList.length ? allowedList : ALLOWED_DEFAULT).map(normalizeDomain);
+  allowedList = getEffectiveAllowedList(allowedList);
 
   const blockedUrl = chrome.runtime.getURL("blocked/blocked.html");
   // Use a regex rule so we can substitute the original URL into the query param
@@ -134,7 +143,7 @@ async function startSession(durationMs) {
   startBadgeUpdater();
   try {
     await chrome.action.setBadgeText({ text: "ON" });
-  } catch (e) {}
+  } catch (e) { }
 }
 
 async function stopSession() {
@@ -144,7 +153,7 @@ async function stopSession() {
   stopBadgeUpdater();
   try {
     await chrome.action.setBadgeText({ text: "" });
-  } catch (e) {}
+  } catch (e) { }
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -160,12 +169,12 @@ chrome.runtime.onStartup.addListener(async () => {
 });
 
 async function ensureState() {
-  const { strictActive, endTime, allowedList } = await getState();
-  if (strictActive && endTime > Date.now()) {
-    await applyRules(allowedList);
-    await chrome.alarms.create(ALARM_NAME, { when: endTime });
+  const state = await getState();
+  if (isSessionActive(state)) {
+    await applyRules(state.allowedList);
+    await chrome.alarms.create(ALARM_NAME, { when: state.endTime });
     startBadgeUpdater();
-    try { await chrome.action.setBadgeText({ text: "ON" }); } catch (e) {}
+    try { await chrome.action.setBadgeText({ text: "ON" }); } catch (e) { }
   } else {
     await stopSession();
   }
@@ -190,7 +199,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse(st);
     } else if (msg && msg.cmd === "reapplyRules") {
       const st = await getState();
-      await applyRules(st.allowedList);
+      if (isSessionActive(st)) {
+        await applyRules(st.allowedList);
+      } else {
+        await clearRules();
+      }
       sendResponse({ ok: true });
     } else {
       sendResponse({ ok: false });

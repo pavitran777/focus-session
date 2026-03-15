@@ -22,8 +22,8 @@ async function loadList() {
 
 async function saveList(list) {
   await chrome.storage.local.set({ allowedList: list });
-  // If session is active, re-apply rules immediately
-  await chrome.runtime.sendMessage({ cmd: "reapplyRules" }).catch(()=>{});
+  // Sync rules immediately when a session is running.
+  await chrome.runtime.sendMessage({ cmd: "reapplyRules" }).catch(() => { });
 }
 
 function render(list) {
@@ -96,6 +96,10 @@ document.addEventListener("keydown", (e) => {
 });
 
 clearAllBtn.addEventListener("click", async () => {
+  const confirmed = window.confirm(
+    "Clear the Allowed List? During a Strict Session, all websites will be blocked until you add sites back."
+  );
+  if (!confirmed) return;
   await saveList([]);
   render([]);
   closeMenu();
