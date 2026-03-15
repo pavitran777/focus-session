@@ -1,6 +1,5 @@
 const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com", "chat.openai.com"];
 const DONATE_URL = "https://buymeacoffee.com/devitzo";
-const REVIEW_URL = "https://chromewebstore.google.com/detail/strict-focus-time-to-lock/";
 
 function normalizeDomain(d) {
   if (!d) return "";
@@ -78,7 +77,6 @@ document.getElementById("domain").addEventListener("keydown", async (e) => {
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsMenu = document.getElementById("settingsMenu");
 const clearAllBtn = document.getElementById("clearAll");
-const reviewBtn = document.getElementById("review");
 const donateBtn = document.getElementById("donate");
 
 function closeMenu() {
@@ -104,11 +102,6 @@ clearAllBtn.addEventListener("click", async () => {
   if (!confirmed) return;
   await saveList([]);
   render([]);
-  closeMenu();
-});
-
-reviewBtn.addEventListener("click", () => {
-  window.open(REVIEW_URL, "_blank", "noopener,noreferrer");
   closeMenu();
 });
 
