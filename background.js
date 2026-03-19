@@ -62,6 +62,16 @@ async function getState() {
   return data;
 }
 
+async function getLiveState() {
+  const state = await getState();
+  if (state.strictActive && state.endTime && state.endTime <= Date.now()) {
+    // The blocked page can notice expiry before the alarm handler runs.
+    await stopSession();
+    return await getState();
+  }
+  return state;
+}
+
 function normalizeDomain(d) {
   if (!d) return "";
   try {
@@ -195,10 +205,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       await stopSession();
       sendResponse({ ok: true });
     } else if (msg && msg.cmd === "getState") {
-      const st = await getState();
+      const st = await getLiveState();
       sendResponse(st);
     } else if (msg && msg.cmd === "reapplyRules") {
-      const st = await getState();
+      const st = await getLiveState();
       if (isSessionActive(st)) {
         await applyRules(st.allowedList);
       } else {

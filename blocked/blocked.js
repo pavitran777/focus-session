@@ -5,6 +5,7 @@ const timeLabel = document.getElementById("time");
 // NEW: read previousUrl from query
 const params = new URLSearchParams(location.search);
 const previousUrl = params.get("previousUrl");
+let endingExpiredSession = false;
 
 // NEW: trap the Back button so you stay on the blocked page during a session
 function trapBack() {
@@ -29,7 +30,27 @@ function setProgress(fracElapsed) {
 }
 
 async function readState() {
-  return await chrome.storage.local.get({ strictActive: false, endTime: 0, totalMs: 0 });
+  try {
+    return await chrome.runtime.sendMessage({ cmd: "getState" });
+  } catch (error) {
+    console.warn("Falling back to stored session state.", error);
+    return await chrome.storage.local.get({ strictActive: false, endTime: 0, totalMs: 0 });
+  }
+}
+
+async function endExpiredSession() {
+  if (endingExpiredSession) return;
+  endingExpiredSession = true;
+
+  try {
+    await chrome.runtime.sendMessage({ cmd: "stop" });
+  } catch (error) {
+    console.warn("Failed to stop expired session before redirecting.", error);
+  }
+
+  if (previousUrl) {
+    location.replace(previousUrl);
+  }
 }
 
 async function init() {
@@ -47,12 +68,13 @@ async function init() {
   if (!state.strictActive || !state.endTime || state.endTime <= Date.now()) {
     timeLabel.textContent = "00:00";
     setProgress(1);
-    // NEW: session is over — if we know the blocked URL, go back to it
-    if (previousUrl) location.replace(previousUrl);
+    void endExpiredSession();
     return;
   }
 
   const total = state.totalMs || Math.max(1, state.endTime - Date.now());
+  let timer = null;
+
   function tick() {
     const left = state.endTime - Date.now();
     const frac = (total - left) / total;
@@ -60,15 +82,17 @@ async function init() {
     setProgress(frac);
 
     if (left <= 0) {
-      clearInterval(timer);
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
       timeLabel.textContent = "00:00";
       setProgress(1);
-      // NEW: timer done — return to the original URL
-      if (previousUrl) location.replace(previousUrl);
+      void endExpiredSession();
     }
   }
   tick();
-  const timer = setInterval(tick, 1000);
+  timer = setInterval(tick, 1000);
 }
 
 init();

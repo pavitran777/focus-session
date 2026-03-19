@@ -41,6 +41,7 @@ async function refresh() {
   if (active) {
     const end = state.endTime;
     const total = state.totalMs || Math.max(1, end - Date.now());
+    let timer = null;
 
     function tick() {
       const left = end - Date.now();
@@ -50,13 +51,16 @@ async function refresh() {
       setPopupProgress(fracElapsed);
 
       if (left <= 0) {
-        clearInterval(timer);
-        refresh();
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        void refresh();
       }
     }
 
     tick();
-    const timer = setInterval(tick, 1000);
+    timer = setInterval(tick, 1000);
   }
 }
 
