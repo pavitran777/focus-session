@@ -2,54 +2,92 @@ const ALL_RULE_ID = 1;
 const ALLOW_BASE_ID = 1000;
 const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com", "chat.openai.com"];
 const ALARM_NAME = "strict-session-end";
+const DEFAULT_ACTION_TITLE = "Strict Session";
+const ACTION_ICON_PATHS = {
+  16: "icons/icon16.png",
+  32: "icons/icon32.png",
+  48: "icons/icon48.png",
+  128: "icons/icon128.png"
+};
 
-// Badge updater functions
+// Action updater functions
 let badgeTimer = null;
 
-// Formatter: if showHours is true we render "h:mm:ss" (hour not zero-padded),
-// otherwise we render "mm:ss".
-function fmt(h, mm, ss, showHours) {
-  if (showHours) {
-    return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-  } else {
-    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+function formatActionTitle(totalSec) {
+  const h = Math.floor(totalSec / 3600);
+  const mm = Math.floor((totalSec % 3600) / 60);
+  const ss = totalSec % 60;
+  const parts = [];
+
+  if (h > 0) {
+    parts.push(`${h}h`);
   }
+
+  if (mm > 0 || h > 0) {
+    parts.push(`${mm}m`);
+  }
+
+  if (h === 0 && (ss > 0 || parts.length === 0)) {
+    parts.push(`${ss}s`);
+  }
+
+  return `${DEFAULT_ACTION_TITLE} | ${parts.join(" ")} left`;
+}
+
+function formatCompactBadge(totalSec) {
+  if (totalSec <= 0) return "";
+  if (totalSec < 60) return `${totalSec}s`;
+  return `${Math.ceil(totalSec / 60)}m`;
+}
+
+async function setBaseActionIcon() {
+  await chrome.action.setIcon({ path: ACTION_ICON_PATHS });
+}
+
+async function setActiveActionAppearance(totalSec) {
+  try {
+    await setBaseActionIcon();
+    await chrome.action.setBadgeBackgroundColor({ color: "#111" });
+    await chrome.action.setBadgeTextColor?.({ color: "#fff" });
+    await chrome.action.setBadgeText({ text: formatCompactBadge(totalSec) });
+    await chrome.action.setTitle({ title: formatActionTitle(totalSec) });
+  } catch { }
+}
+
+async function setInactiveActionAppearance() {
+  try {
+    await setBaseActionIcon();
+    await chrome.action.setBadgeText({ text: "" });
+    await chrome.action.setTitle({ title: DEFAULT_ACTION_TITLE });
+  } catch { }
 }
 
 async function updateBadgeOnce() {
   const { strictActive, endTime } = await getState();
   if (!strictActive || !endTime || endTime <= Date.now()) {
-    try { await chrome.action.setBadgeText({ text: "" }); } catch { }
+    await setInactiveActionAppearance();
     return false;
   }
+
   const left = endTime - Date.now(); // ms
   const totalSec = Math.max(0, Math.floor(left / 1000));
 
-  // Show "h:mm:ss" only when >= 60 minutes (3600 seconds).
-  const showHours = totalSec >= 3600;
-  const h = Math.floor(totalSec / 3600);
-  const mm = Math.floor((totalSec % 3600) / 60);
-  const ss = totalSec % 60;
-
-  const text = fmt(h, mm, ss, showHours);
-  try {
-    await chrome.action.setBadgeBackgroundColor({ color: "#111" });
-    await chrome.action.setBadgeTextColor?.({ color: "#fff" });
-    await chrome.action.setBadgeText({ text });
-  } catch { }
+  await setActiveActionAppearance(totalSec);
   return true;
 }
 
 function startBadgeUpdater() {
   if (badgeTimer) clearInterval(badgeTimer);
-  // Update every second; if the service worker sleeps, it’ll catch up on next wake.
+  // Update every second; if the service worker sleeps, it'll catch up on next wake.
   badgeTimer = setInterval(updateBadgeOnce, 1000);
-  updateBadgeOnce();
+  void updateBadgeOnce();
 }
 
 function stopBadgeUpdater() {
-  if (badgeTimer) { clearInterval(badgeTimer); badgeTimer = null; }
-  try { chrome.action.setBadgeText({ text: "" }); } catch { }
+  if (badgeTimer) {
+    clearInterval(badgeTimer);
+    badgeTimer = null;
+  }
 }
 
 async function getState() {
@@ -151,9 +189,6 @@ async function startSession(durationMs) {
   await applyRules(allowedList);
   await chrome.alarms.create(ALARM_NAME, { when: endTime });
   startBadgeUpdater();
-  try {
-    await chrome.action.setBadgeText({ text: "ON" });
-  } catch (e) { }
 }
 
 async function stopSession() {
@@ -161,9 +196,7 @@ async function stopSession() {
   await chrome.alarms.clear(ALARM_NAME);
   await clearRules();
   stopBadgeUpdater();
-  try {
-    await chrome.action.setBadgeText({ text: "" });
-  } catch (e) { }
+  await setInactiveActionAppearance();
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -184,9 +217,18 @@ async function ensureState() {
     await applyRules(state.allowedList);
     await chrome.alarms.create(ALARM_NAME, { when: state.endTime });
     startBadgeUpdater();
-    try { await chrome.action.setBadgeText({ text: "ON" }); } catch (e) { }
   } else {
     await stopSession();
+  }
+}
+
+async function syncActionAppearance() {
+  const state = await getLiveState();
+  if (isSessionActive(state)) {
+    startBadgeUpdater();
+  } else {
+    stopBadgeUpdater();
+    await setInactiveActionAppearance();
   }
 }
 
@@ -221,3 +263,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   })();
   return true; // keep message channel open for async response
 });
+
+void syncActionAppearance();
