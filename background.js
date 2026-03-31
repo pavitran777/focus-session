@@ -1,55 +1,97 @@
 const ALL_RULE_ID = 1;
 const ALLOW_BASE_ID = 1000;
+const BLOCK_BASE_ID = 2000;
 const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com", "chat.openai.com"];
+const BLOCKED_DEFAULT = [];
+const SESSION_MODE_ALLOW = "allow";
+const SESSION_MODE_BLOCKED = "blocked";
 const ALARM_NAME = "strict-session-end";
+const DEFAULT_ACTION_TITLE = "Strict Session";
+const ACTION_ICON_PATHS = {
+  16: "icons/icon16.png",
+  32: "icons/icon32.png",
+  48: "icons/icon48.png",
+  128: "icons/icon128.png"
+};
 
-// Badge updater functions
+// Action updater functions
 let badgeTimer = null;
 
-// Formatter: if showHours is true we render "h:mm:ss" (hour not zero-padded),
-// otherwise we render "mm:ss".
-function fmt(h, mm, ss, showHours) {
-  if (showHours) {
-    return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-  } else {
-    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+function formatActionTitle(totalSec) {
+  const h = Math.floor(totalSec / 3600);
+  const mm = Math.floor((totalSec % 3600) / 60);
+  const ss = totalSec % 60;
+  const parts = [];
+
+  if (h > 0) {
+    parts.push(`${h}h`);
   }
+
+  if (mm > 0 || h > 0) {
+    parts.push(`${mm}m`);
+  }
+
+  if (h === 0 && (ss > 0 || parts.length === 0)) {
+    parts.push(`${ss}s`);
+  }
+
+  return `${DEFAULT_ACTION_TITLE} | ${parts.join(" ")} left`;
+}
+
+function formatCompactBadge(totalSec) {
+  if (totalSec <= 0) return "";
+  if (totalSec < 60) return `${totalSec}s`;
+  return `${Math.ceil(totalSec / 60)}m`;
+}
+
+async function setBaseActionIcon() {
+  await chrome.action.setIcon({ path: ACTION_ICON_PATHS });
+}
+
+async function setActiveActionAppearance(totalSec) {
+  try {
+    await setBaseActionIcon();
+    await chrome.action.setBadgeBackgroundColor({ color: "#111" });
+    await chrome.action.setBadgeTextColor?.({ color: "#fff" });
+    await chrome.action.setBadgeText({ text: formatCompactBadge(totalSec) });
+    await chrome.action.setTitle({ title: formatActionTitle(totalSec) });
+  } catch { }
+}
+
+async function setInactiveActionAppearance() {
+  try {
+    await setBaseActionIcon();
+    await chrome.action.setBadgeText({ text: "" });
+    await chrome.action.setTitle({ title: DEFAULT_ACTION_TITLE });
+  } catch { }
 }
 
 async function updateBadgeOnce() {
   const { strictActive, endTime } = await getState();
   if (!strictActive || !endTime || endTime <= Date.now()) {
-    try { await chrome.action.setBadgeText({ text: "" }); } catch { }
+    await setInactiveActionAppearance();
     return false;
   }
+
   const left = endTime - Date.now(); // ms
   const totalSec = Math.max(0, Math.floor(left / 1000));
 
-  // Show "h:mm:ss" only when >= 60 minutes (3600 seconds).
-  const showHours = totalSec >= 3600;
-  const h = Math.floor(totalSec / 3600);
-  const mm = Math.floor((totalSec % 3600) / 60);
-  const ss = totalSec % 60;
-
-  const text = fmt(h, mm, ss, showHours);
-  try {
-    await chrome.action.setBadgeBackgroundColor({ color: "#111" });
-    await chrome.action.setBadgeTextColor?.({ color: "#fff" });
-    await chrome.action.setBadgeText({ text });
-  } catch { }
+  await setActiveActionAppearance(totalSec);
   return true;
 }
 
 function startBadgeUpdater() {
   if (badgeTimer) clearInterval(badgeTimer);
-  // Update every second; if the service worker sleeps, it’ll catch up on next wake.
+  // Update every second; if the service worker sleeps, it'll catch up on next wake.
   badgeTimer = setInterval(updateBadgeOnce, 1000);
-  updateBadgeOnce();
+  void updateBadgeOnce();
 }
 
 function stopBadgeUpdater() {
-  if (badgeTimer) { clearInterval(badgeTimer); badgeTimer = null; }
-  try { chrome.action.setBadgeText({ text: "" }); } catch { }
+  if (badgeTimer) {
+    clearInterval(badgeTimer);
+    badgeTimer = null;
+  }
 }
 
 async function getState() {
@@ -57,9 +99,17 @@ async function getState() {
     strictActive: false,
     endTime: 0,
     totalMs: 0,
-    allowedList: ALLOWED_DEFAULT
+    allowedList: ALLOWED_DEFAULT,
+    blockedList: BLOCKED_DEFAULT,
+    sessionMode: SESSION_MODE_ALLOW
   });
-  return data;
+
+  return {
+    ...data,
+    allowedList: getEffectiveList(data.allowedList, ALLOWED_DEFAULT),
+    blockedList: getEffectiveList(data.blockedList, BLOCKED_DEFAULT),
+    sessionMode: normalizeSessionMode(data.sessionMode)
+  };
 }
 
 async function getLiveState() {
@@ -87,39 +137,52 @@ function normalizeDomain(d) {
   }
 }
 
-function getEffectiveAllowedList(allowedList) {
-  const sourceList = Array.isArray(allowedList) ? allowedList : ALLOWED_DEFAULT;
+function getEffectiveList(list, fallback) {
+  const sourceList = Array.isArray(list) ? list : fallback;
   return sourceList.map(normalizeDomain).filter(Boolean);
+}
+
+function normalizeSessionMode(mode) {
+  return mode === SESSION_MODE_BLOCKED ? SESSION_MODE_BLOCKED : SESSION_MODE_ALLOW;
 }
 
 function isSessionActive(state) {
   return Boolean(state && state.strictActive && state.endTime > Date.now());
 }
 
-async function applyRules(allowedList) {
-  allowedList = getEffectiveAllowedList(allowedList);
-
+function getBlockedUrl() {
   const blockedUrl = chrome.runtime.getURL("blocked/blocked.html");
-  // Use a regex rule so we can substitute the original URL into the query param
+  return `${blockedUrl}?previousUrl=\\0`;
+}
+
+function escapeForRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function createRedirectAction() {
+  return {
+    type: "redirect",
+    redirect: {
+      regexSubstitution: getBlockedUrl()
+    }
+  };
+}
+
+function buildAllowRules(allowedList) {
   const redirectAllRule = {
     id: ALL_RULE_ID,
     priority: 1,
-    action: {
-      type: "redirect",
-      redirect: {
-        regexSubstitution: `${blockedUrl}?previousUrl=\\0`
-      }
-    },
+    action: createRedirectAction(),
     condition: {
       regexFilter: "^(https?|file)://.*",
       resourceTypes: ["main_frame"]
     }
   };
 
-  const addRules = [redirectAllRule];
+  const rules = [redirectAllRule];
 
   allowedList.forEach((domain, idx) => {
-    const rule = {
+    rules.push({
       id: ALLOW_BASE_ID + idx,
       priority: 2,
       action: { type: "allow" },
@@ -127,12 +190,35 @@ async function applyRules(allowedList) {
         urlFilter: "||" + domain + "^",
         resourceTypes: ["main_frame"]
       }
-    };
-    addRules.push(rule);
+    });
   });
 
+  return rules;
+}
+
+function buildBlockedRules(blockedList) {
+  return blockedList.map((domain, idx) => ({
+    id: BLOCK_BASE_ID + idx,
+    priority: 1,
+    action: createRedirectAction(),
+    condition: {
+      regexFilter: `^https?://([^/]+\\.)?${escapeForRegex(domain)}([/?#:].*)?$`,
+      resourceTypes: ["main_frame"]
+    }
+  }));
+}
+
+async function applyRules(sessionMode, allowedList, blockedList) {
+  const normalizedMode = normalizeSessionMode(sessionMode);
+  const effectiveAllowedList = getEffectiveList(allowedList, ALLOWED_DEFAULT);
+  const effectiveBlockedList = getEffectiveList(blockedList, BLOCKED_DEFAULT);
+  const addRules =
+    normalizedMode === SESSION_MODE_BLOCKED
+      ? buildBlockedRules(effectiveBlockedList)
+      : buildAllowRules(effectiveAllowedList);
+
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
-  const removeIds = existing.map(r => r.id);
+  const removeIds = existing.map((rule) => rule.id);
   await chrome.declarativeNetRequest.updateDynamicRules({ addRules, removeRuleIds: removeIds });
 }
 
@@ -146,14 +232,12 @@ async function clearRules() {
 async function startSession(durationMs) {
   const now = Date.now();
   const endTime = now + durationMs;
-  const { allowedList } = await getState();
-  await chrome.storage.local.set({ strictActive: true, endTime, totalMs: durationMs });
-  await applyRules(allowedList);
+  const state = await getState();
+  const sessionMode = normalizeSessionMode(state.sessionMode);
+  await chrome.storage.local.set({ strictActive: true, endTime, totalMs: durationMs, sessionMode });
+  await applyRules(sessionMode, state.allowedList, state.blockedList);
   await chrome.alarms.create(ALARM_NAME, { when: endTime });
   startBadgeUpdater();
-  try {
-    await chrome.action.setBadgeText({ text: "ON" });
-  } catch (e) { }
 }
 
 async function stopSession() {
@@ -161,16 +245,29 @@ async function stopSession() {
   await chrome.alarms.clear(ALARM_NAME);
   await clearRules();
   stopBadgeUpdater();
-  try {
-    await chrome.action.setBadgeText({ text: "" });
-  } catch (e) { }
+  await setInactiveActionAppearance();
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
-  const st = await getState();
-  if (!st.allowedList) {
-    await chrome.storage.local.set({ allowedList: ALLOWED_DEFAULT });
+  const st = await chrome.storage.local.get(["allowedList", "blockedList", "sessionMode"]);
+  const updates = {};
+
+  if (!Array.isArray(st.allowedList)) {
+    updates.allowedList = ALLOWED_DEFAULT;
   }
+
+  if (!Array.isArray(st.blockedList)) {
+    updates.blockedList = BLOCKED_DEFAULT;
+  }
+
+  if (!st.sessionMode) {
+    updates.sessionMode = SESSION_MODE_ALLOW;
+  }
+
+  if (Object.keys(updates).length) {
+    await chrome.storage.local.set(updates);
+  }
+
   await ensureState();
 });
 
@@ -181,12 +278,21 @@ chrome.runtime.onStartup.addListener(async () => {
 async function ensureState() {
   const state = await getState();
   if (isSessionActive(state)) {
-    await applyRules(state.allowedList);
+    await applyRules(state.sessionMode, state.allowedList, state.blockedList);
     await chrome.alarms.create(ALARM_NAME, { when: state.endTime });
     startBadgeUpdater();
-    try { await chrome.action.setBadgeText({ text: "ON" }); } catch (e) { }
   } else {
     await stopSession();
+  }
+}
+
+async function syncActionAppearance() {
+  const state = await getLiveState();
+  if (isSessionActive(state)) {
+    startBadgeUpdater();
+  } else {
+    stopBadgeUpdater();
+    await setInactiveActionAppearance();
   }
 }
 
@@ -199,6 +305,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
     if (msg && msg.cmd === "start") {
+      const sessionMode = normalizeSessionMode(msg.sessionMode);
+      await chrome.storage.local.set({ sessionMode });
       await startSession(msg.durationMs);
       sendResponse({ ok: true });
     } else if (msg && msg.cmd === "stop") {
@@ -210,7 +318,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     } else if (msg && msg.cmd === "reapplyRules") {
       const st = await getLiveState();
       if (isSessionActive(st)) {
-        await applyRules(st.allowedList);
+        await applyRules(st.sessionMode, st.allowedList, st.blockedList);
       } else {
         await clearRules();
       }
@@ -221,3 +329,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   })();
   return true; // keep message channel open for async response
 });
+
+void syncActionAppearance();

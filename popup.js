@@ -1,3 +1,11 @@
+const SESSION_MODE_ALLOW = "allow";
+const SESSION_MODE_BLOCKED = "blocked";
+let popupTimer = null;
+
+function normalizeSessionMode(mode) {
+  return mode === SESSION_MODE_BLOCKED ? SESSION_MODE_BLOCKED : SESSION_MODE_ALLOW;
+}
+
 function formatTime(ms) {
   if (ms < 0) ms = 0;
   const totalSec = Math.floor(ms / 1000);
@@ -24,24 +32,60 @@ async function getState() {
   return await chrome.runtime.sendMessage({ cmd: "getState" });
 }
 
-function setAllowedCount(list) {
-  const el = document.getElementById("allowed-count");
-  const n = (list && list.length) ? list.length : 0;
-  el.textContent = n === 1 ? "1 website" : `${n} websites`;
+function getModeLabel(mode) {
+  return normalizeSessionMode(mode) === SESSION_MODE_BLOCKED ? "Blocked List" : "Allow List";
+}
+
+function getModeCopy(mode) {
+  return normalizeSessionMode(mode) === SESSION_MODE_BLOCKED
+    ? "Only sites on your Blocked List will be blocked during this session."
+    : "Only sites on your Allow List stay available during this session.";
+}
+
+function setListSummary(state) {
+  const el = document.getElementById("list-summary");
+  const allowedCount = Array.isArray(state.allowedList) ? state.allowedList.length : 0;
+  const blockedCount = Array.isArray(state.blockedList) ? state.blockedList.length : 0;
+  el.textContent = `Allow List: ${allowedCount} | Blocked List: ${blockedCount}`;
+}
+
+function setModeSelection(mode) {
+  const normalizedMode = normalizeSessionMode(mode);
+  document.querySelectorAll("[data-mode]").forEach((button) => {
+    const isActive = button.dataset.mode === normalizedMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+  document.getElementById("mode-copy").textContent = getModeCopy(normalizedMode);
+}
+
+function setActiveMode(mode) {
+  const label = getModeLabel(mode);
+  document.getElementById("active-mode-label").textContent = `${label} Active`;
+  document.getElementById("active-mode-copy").textContent = getModeCopy(mode);
+}
+
+function clearPopupTimer() {
+  if (popupTimer) {
+    clearInterval(popupTimer);
+    popupTimer = null;
+  }
 }
 
 async function refresh() {
+  clearPopupTimer();
   const state = await getState();
-  setAllowedCount(state.allowedList || []);
+  setListSummary(state);
+  setModeSelection(state.sessionMode);
 
   const active = state.strictActive && state.endTime > Date.now();
   document.getElementById("active").classList.toggle("hidden", !active);
   document.getElementById("start").style.display = active ? "none" : "block";
 
   if (active) {
+    setActiveMode(state.sessionMode);
     const end = state.endTime;
     const total = state.totalMs || Math.max(1, end - Date.now());
-    let timer = null;
 
     function tick() {
       const left = end - Date.now();
@@ -51,27 +95,37 @@ async function refresh() {
       setPopupProgress(fracElapsed);
 
       if (left <= 0) {
-        if (timer) {
-          clearInterval(timer);
-          timer = null;
-        }
+        clearPopupTimer();
         void refresh();
       }
     }
 
     tick();
-    timer = setInterval(tick, 1000);
+    popupTimer = setInterval(tick, 1000);
   }
 }
 
-document.getElementById("allowed-link").addEventListener("click", () => {
+document.getElementById("lists-link").addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
+});
+
+document.querySelectorAll("[data-mode]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const sessionMode = normalizeSessionMode(button.dataset.mode);
+    await chrome.storage.local.set({ sessionMode });
+    setModeSelection(sessionMode);
+  });
 });
 
 document.querySelectorAll("[data-mins]").forEach(btn => {
   btn.addEventListener("click", async () => {
     const mins = parseInt(btn.getAttribute("data-mins"), 10);
-    await chrome.runtime.sendMessage({ cmd: "start", durationMs: mins * 60 * 1000 });
+    const { sessionMode = SESSION_MODE_ALLOW } = await chrome.storage.local.get({ sessionMode: SESSION_MODE_ALLOW });
+    await chrome.runtime.sendMessage({
+      cmd: "start",
+      durationMs: mins * 60 * 1000,
+      sessionMode: normalizeSessionMode(sessionMode)
+    });
     window.close();
   });
 });

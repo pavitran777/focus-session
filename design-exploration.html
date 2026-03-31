@@ -1,0 +1,1422 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Strict Session Design Exploration</title>
+  <style>
+    :root {
+      --bg: #f4efe7;
+      --bg-strong: #eadfce;
+      --panel: rgba(255, 255, 255, 0.88);
+      --panel-strong: #ffffff;
+      --panel-muted: #f7f1e7;
+      --line: rgba(45, 34, 21, 0.12);
+      --line-strong: rgba(45, 34, 21, 0.24);
+      --text: #21180f;
+      --text-soft: #615446;
+      --text-muted: #8b7a69;
+      --accent: #cf5b2e;
+      --accent-soft: rgba(207, 91, 46, 0.12);
+      --green: #1d6b58;
+      --green-soft: rgba(29, 107, 88, 0.13);
+      --shadow: 0 20px 48px rgba(53, 33, 13, 0.12);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --transition: 180ms ease;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      color-scheme: light;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.76), transparent 30%),
+        radial-gradient(circle at top right, rgba(207, 91, 46, 0.12), transparent 28%),
+        linear-gradient(180deg, #f7f2ea 0%, #f1e8db 100%);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1380px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 32px 0 72px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.95fr);
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 28px;
+    }
+
+    .hero-card,
+    .summary-card,
+    .showcase,
+    .table-card,
+    .notes-card {
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius-xl);
+    }
+
+    .hero-card {
+      padding: 34px 34px 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -120px -130px auto;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(207, 91, 46, 0.18), transparent 68%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(45, 34, 21, 0.08);
+      color: var(--text-soft);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    .hero-card h1 {
+      margin-top: 18px;
+      font-size: clamp(34px, 5vw, 56px);
+      line-height: 0.98;
+      max-width: 11ch;
+      letter-spacing: -0.04em;
+    }
+
+    .hero-card p {
+      margin-top: 16px;
+      max-width: 58ch;
+      color: var(--text-soft);
+      font-size: 17px;
+      line-height: 1.55;
+    }
+
+    .hero-points {
+      margin-top: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip {
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(45, 34, 21, 0.08);
+      color: var(--text-soft);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .summary-card {
+      padding: 28px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .summary-card h2 {
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .summary-card p {
+      color: var(--text-soft);
+      line-height: 1.5;
+      font-size: 15px;
+    }
+
+    .decision-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .decision {
+      padding: 16px 16px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.74);
+    }
+
+    .decision strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .decision span {
+      color: var(--text-soft);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      margin: 10px 0 16px;
+    }
+
+    .section-head h2 {
+      font-size: 26px;
+      letter-spacing: -0.03em;
+    }
+
+    .section-head p {
+      max-width: 62ch;
+      color: var(--text-soft);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    .showcase-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    .showcase {
+      padding: 18px;
+    }
+
+    .showcase-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .showcase-meta h3 {
+      font-size: 19px;
+      letter-spacing: -0.02em;
+    }
+
+    .showcase-meta p {
+      margin-top: 6px;
+      color: var(--text-soft);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--panel-muted);
+      border: 1px solid rgba(45, 34, 21, 0.08);
+      color: var(--text-soft);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .badge.recommended {
+      background: rgba(29, 107, 88, 0.12);
+      color: var(--green);
+      border-color: rgba(29, 107, 88, 0.18);
+    }
+
+    .window {
+      border-radius: 26px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 245, 237, 0.98));
+      border: 1px solid rgba(45, 34, 21, 0.09);
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+
+    .window-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(45, 34, 21, 0.08);
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 7px;
+    }
+
+    .window-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(45, 34, 21, 0.16);
+    }
+
+    .window-body {
+      padding: 18px;
+    }
+
+    .settings-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 14px;
+    }
+
+    .title-stack small {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .title-stack h4 {
+      margin: 0;
+      font-size: 21px;
+      letter-spacing: -0.03em;
+    }
+
+    .icon-button {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--text-soft);
+      cursor: pointer;
+      transition: transform var(--transition), border-color var(--transition), background var(--transition);
+    }
+
+    .icon-button:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      background: rgba(255, 255, 255, 1);
+    }
+
+    .icon-button svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .tabs,
+    .segmented {
+      display: inline-grid;
+      grid-auto-flow: column;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 15px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.65);
+    }
+
+    .tabs button,
+    .segmented button {
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 11px;
+      background: transparent;
+      color: var(--text-soft);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+    }
+
+    .tabs button.is-active,
+    .segmented button.is-active {
+      background: var(--panel-strong);
+      color: var(--text);
+      box-shadow: 0 10px 18px rgba(30, 18, 5, 0.08);
+    }
+
+    .support-copy {
+      margin: 14px 0 16px;
+      color: var(--text-soft);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .input-row input {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--text);
+    }
+
+    .input-row button,
+    .pill,
+    .control-row button,
+    .duration-grid button {
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: transform var(--transition), background var(--transition), border-color var(--transition);
+    }
+
+    .input-row button:hover,
+    .pill:hover,
+    .control-row button:hover,
+    .duration-grid button:hover {
+      transform: translateY(-1px);
+    }
+
+    .input-row .cta {
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .list-wrap {
+      position: relative;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(45, 34, 21, 0.08);
+      background: rgba(255, 255, 255, 0.72);
+      min-height: 216px;
+    }
+
+    .list-wrap.is-hidden .list-contents {
+      filter: blur(10px);
+      opacity: 0.48;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .list-wrap.is-hidden .privacy-layer {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .privacy-layer {
+      position: absolute;
+      inset: 14px;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255, 250, 242, 0.4), rgba(255, 255, 255, 0.82));
+      border: 1px dashed rgba(45, 34, 21, 0.15);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition);
+      text-align: center;
+      padding: 20px;
+    }
+
+    .privacy-layer strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+
+    .privacy-layer span {
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .site-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .site-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(45, 34, 21, 0.08);
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .site-list li span:last-child {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .callout {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 13px;
+      line-height: 1.45;
+      border: 1px solid rgba(29, 107, 88, 0.15);
+    }
+
+    .design-notes {
+      margin-top: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .design-note {
+      padding: 11px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(45, 34, 21, 0.08);
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .two-section-layout {
+      display: grid;
+      gap: 14px;
+    }
+
+    .stack-card {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(45, 34, 21, 0.08);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .stack-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .stack-card-head strong {
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .stack-card-head span {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .popup-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    .popup {
+      width: 100%;
+      max-width: 370px;
+      margin: 0 auto;
+    }
+
+    .popup .window-body {
+      padding: 18px 18px 20px;
+    }
+
+    .popup-title {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .popup-title h4 {
+      font-size: 18px;
+      letter-spacing: -0.03em;
+    }
+
+    .popup-title p {
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .control-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .pill {
+      flex: 1 1 0;
+      padding: 10px 12px;
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.82);
+      border-color: var(--line);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-soft);
+    }
+
+    .pill.is-active {
+      background: var(--accent-soft);
+      border-color: rgba(207, 91, 46, 0.16);
+      color: var(--accent);
+    }
+
+    .mode-card-grid {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .mode-card {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .mode-card strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+
+    .mode-card span {
+      display: block;
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.45;
+      margin-bottom: 10px;
+    }
+
+    .mode-card button {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .mode-card.is-accent {
+      border-color: rgba(207, 91, 46, 0.16);
+      background: linear-gradient(180deg, rgba(255, 244, 239, 0.9), rgba(255, 255, 255, 0.92));
+    }
+
+    .summary-strip {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.45;
+      margin-bottom: 16px;
+    }
+
+    .duration-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .duration-grid button {
+      padding: 10px 6px;
+      border-radius: 12px;
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .duration-grid button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .table-card,
+    .notes-card {
+      padding: 22px;
+      margin-bottom: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 14px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(45, 34, 21, 0.08);
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    td {
+      font-size: 14px;
+      line-height: 1.48;
+      color: var(--text-soft);
+    }
+
+    td strong {
+      color: var(--text);
+    }
+
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .notes-grid section {
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(45, 34, 21, 0.08);
+      background: rgba(255, 255, 255, 0.76);
+    }
+
+    .notes-grid h3 {
+      margin-bottom: 8px;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+
+    .notes-grid ul {
+      padding-left: 18px;
+      margin: 0;
+      color: var(--text-soft);
+      font-size: 14px;
+      line-height: 1.52;
+    }
+
+    .notes-grid li + li {
+      margin-top: 6px;
+    }
+
+    .footer-note {
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    [data-tab-panel] {
+      display: none;
+    }
+
+    [data-tab-panel].is-active {
+      display: block;
+    }
+
+    @media (max-width: 1180px) {
+      .hero,
+      .showcase-grid,
+      .popup-grid,
+      .notes-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100vw - 20px, 760px);
+        padding-top: 18px;
+      }
+
+      .hero-card,
+      .summary-card,
+      .showcase,
+      .table-card,
+      .notes-card {
+        border-radius: 22px;
+      }
+
+      .hero-card {
+        padding: 24px;
+      }
+
+      .summary-card,
+      .table-card,
+      .notes-card,
+      .showcase {
+        padding: 18px;
+      }
+
+      .window-body {
+        padding: 14px;
+      }
+
+      .duration-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <article class="hero-card">
+        <span class="eyebrow">Strict Session UI Study</span>
+        <h1>Allow List stays default. Blocked List becomes the new second mode.</h1>
+        <p>
+          This page turns the earlier product discussion into concrete screens. It shows how the options page can hold
+          both list types, how the blocked list can stay hidden by default behind a top-right eye control, and how the
+          popup can expose different session-mode toggles without making the extension feel heavier.
+        </p>
+        <div class="hero-points">
+          <span class="chip">Allow List remains the default path</span>
+          <span class="chip">Blocked List is a real session mode</span>
+          <span class="chip">Settings privacy toggle hides blocked entries by default</span>
+          <span class="chip">Popup mode switch is the fastest recommended control</span>
+        </div>
+      </article>
+
+      <aside class="summary-card">
+        <div>
+          <h2>Recommended direction</h2>
+          <p>
+            The cleanest product shape is to keep the existing allowlist mental model intact, layer blocklist on top as
+            a second mode, and avoid mixing both lists into one overloaded screen.
+          </p>
+        </div>
+
+        <div class="decision-stack">
+          <div class="decision">
+            <strong>Settings layout</strong>
+            <span>Use top tabs: Allow List first, Blocked List second. It maps well to the current single-list page.</span>
+          </div>
+          <div class="decision">
+            <strong>Blocked list privacy</strong>
+            <span>Keep blocked entries blurred and dimmed on page load. Reveal them only after clicking the top-right eye button.</span>
+          </div>
+          <div class="decision">
+            <strong>Session type control</strong>
+            <span>Put an Allow / Blocked segmented control in the popup above the duration grid so the choice is obvious at start time.</span>
+          </div>
+          <div class="decision">
+            <strong>Runtime behavior</strong>
+            <span>Allow mode keeps the current redirect-all-except-allow behavior. Blocked mode redirects only domains found in Blocked List.</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <div class="section-head">
+      <div>
+        <h2>Settings Layout Explorations</h2>
+        <p>
+          These three directions all fit the existing extension. The first one is the strongest because it preserves the
+          current page structure, keeps allow as the primary concept, and gives blocked list a privacy-oriented reveal.
+        </p>
+      </div>
+    </div>
+
+    <section class="showcase-grid">
+      <article class="showcase">
+        <div class="showcase-meta">
+          <div>
+            <h3>Option A: Top Tabs</h3>
+            <p>The current options page becomes a two-tab page. Same structure, clearer mental model.</p>
+          </div>
+          <span class="badge recommended">Recommended</span>
+        </div>
+
+        <div class="window">
+          <div class="window-bar">
+            <span>Options</span>
+            <div class="window-dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="window-body">
+            <div class="settings-head">
+              <div class="title-stack">
+                <h4>Access Rules</h4>
+                <small>Allow List stays the default tab. Blocked List can be revealed only when needed.</small>
+              </div>
+              <button class="icon-button" data-privacy-toggle aria-label="Toggle blocked list visibility">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+
+            <div class="tabs" data-tabs>
+              <button class="is-active" data-tab-trigger="allow">Allow List</button>
+              <button data-tab-trigger="blocked">Blocked List</button>
+            </div>
+
+            <p class="support-copy">
+              In Allow mode, everything is blocked during a session except the domains listed here. This stays as the
+              default setup.
+            </p>
+
+            <div class="input-row">
+              <input type="text" value="chatgpt.com">
+              <button class="cta">Add</button>
+            </div>
+
+            <div data-tab-panel="allow" class="is-active">
+              <div class="list-wrap">
+                <div class="list-contents">
+                  <ul class="site-list">
+                    <li><span>chatgpt.com</span><span>Allow</span></li>
+                    <li><span>google.com</span><span>Allow</span></li>
+                    <li><span>youtube.com</span><span>Allow</span></li>
+                    <li><span>chat.openai.com</span><span>Allow</span></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div data-tab-panel="blocked">
+              <div class="list-wrap is-hidden" data-privacy-panel>
+                <div class="list-contents">
+                  <ul class="site-list">
+                    <li><span>twitter.com</span><span>Blocked</span></li>
+                    <li><span>reddit.com</span><span>Blocked</span></li>
+                    <li><span>news.ycombinator.com</span><span>Blocked</span></li>
+                    <li><span>instagram.com</span><span>Blocked</span></li>
+                  </ul>
+                </div>
+                <div class="privacy-layer">
+                  <div>
+                    <strong>Blocked List hidden by default</strong>
+                    <span>Use the eye control in the top-right corner when you want to inspect or edit these entries.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout">
+              Best fit for the current codebase: it reuses one input, one list area, and one add/remove pattern.
+            </div>
+          </div>
+        </div>
+
+        <div class="design-notes">
+          <div class="design-note">The eye button only matters on Blocked List. It can stay subtle until that tab is active.</div>
+          <div class="design-note">Copy changes per tab so the rules stay understandable: Allow explains exceptions, Blocked explains targeted blocking.</div>
+        </div>
+      </article>
+
+      <article class="showcase">
+        <div class="showcase-meta">
+          <div>
+            <h3>Option B: Mode Card</h3>
+            <p>A more control-heavy version where a dedicated mode card sits above the shared list editor.</p>
+          </div>
+          <span class="badge">Alternative</span>
+        </div>
+
+        <div class="window">
+          <div class="window-bar">
+            <span>Options</span>
+            <div class="window-dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="window-body">
+            <div class="settings-head">
+              <div class="title-stack">
+                <h4>Session Mode Setup</h4>
+                <small>This version treats mode selection as a product-level preference, not only a tab selection.</small>
+              </div>
+            </div>
+
+            <div class="stack-card">
+              <div class="stack-card-head">
+                <strong>Current default mode</strong>
+                <span>Allow List</span>
+              </div>
+              <div class="segmented">
+                <button class="is-active">Allow List</button>
+                <button>Blocked List</button>
+              </div>
+              <p class="support-copy">
+                The editor below updates based on the chosen mode. It is explicit, but feels a little more administrative.
+              </p>
+            </div>
+
+            <div class="input-row">
+              <input type="text" value="reddit.com">
+              <button class="cta">Add</button>
+            </div>
+
+            <div class="list-wrap is-hidden" data-privacy-panel>
+              <button class="icon-button" data-privacy-toggle style="position:absolute; top:14px; right:14px;" aria-label="Toggle blocked list visibility">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+              <div class="list-contents" style="padding-top: 28px;">
+                <ul class="site-list">
+                  <li><span>reddit.com</span><span>Blocked</span></li>
+                  <li><span>x.com</span><span>Blocked</span></li>
+                  <li><span>facebook.com</span><span>Blocked</span></li>
+                </ul>
+              </div>
+              <div class="privacy-layer">
+                <div>
+                  <strong>Privacy first</strong>
+                  <span>The hidden state is built into the card itself instead of the overall page header.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="design-notes">
+          <div class="design-note">Good if the product starts exposing mode defaults or more settings later.</div>
+          <div class="design-note">Slightly heavier than needed for a small extension because mode and content are split into separate controls.</div>
+        </div>
+      </article>
+
+      <article class="showcase">
+        <div class="showcase-meta">
+          <div>
+            <h3>Option C: Two Sections</h3>
+            <p>Both lists live on the same page at once. Fast to scan, but visually denser and easier to overwhelm.</p>
+          </div>
+          <span class="badge">Alternative</span>
+        </div>
+
+        <div class="window">
+          <div class="window-bar">
+            <span>Options</span>
+            <div class="window-dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="window-body">
+            <div class="settings-head">
+              <div class="title-stack">
+                <h4>All Lists</h4>
+                <small>Everything is visible in one screen. Useful for power users, noisier for everyone else.</small>
+              </div>
+              <button class="icon-button" data-privacy-toggle aria-label="Toggle blocked list visibility">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+
+            <div class="two-section-layout">
+              <div class="stack-card">
+                <div class="stack-card-head">
+                  <strong>Allow List</strong>
+                  <span>Default</span>
+                </div>
+                <ul class="site-list">
+                  <li><span>chatgpt.com</span><span>Allow</span></li>
+                  <li><span>google.com</span><span>Allow</span></li>
+                </ul>
+              </div>
+
+              <div class="stack-card list-wrap is-hidden" data-privacy-panel style="min-height: auto;">
+                <div class="stack-card-head" style="margin-bottom: 8px;">
+                  <strong>Blocked List</strong>
+                  <span>Hidden</span>
+                </div>
+                <div class="list-contents">
+                  <ul class="site-list">
+                    <li><span>reddit.com</span><span>Blocked</span></li>
+                    <li><span>linkedin.com</span><span>Blocked</span></li>
+                  </ul>
+                </div>
+                <div class="privacy-layer">
+                  <div>
+                    <strong>Hidden until reveal</strong>
+                    <span>The eye toggle masks only the Blocked List section, not the whole page.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout">
+              Strong visibility, weaker hierarchy. Users have to parse two concepts at once every time they open settings.
+            </div>
+          </div>
+        </div>
+
+        <div class="design-notes">
+          <div class="design-note">Good for people who want to compare lists at a glance.</div>
+          <div class="design-note">Less ideal for the current extension because the page is intentionally very lightweight today.</div>
+        </div>
+      </article>
+    </section>
+
+    <div class="section-head">
+      <div>
+        <h2>Popup Session Toggle Explorations</h2>
+        <p>
+          The popup is where mode choice matters most at start time. These patterns show how the next session can choose
+          between Allow and Blocked behavior while still respecting Allow List as the default.
+        </p>
+      </div>
+    </div>
+
+    <section class="popup-grid">
+      <article class="showcase">
+        <div class="showcase-meta">
+          <div>
+            <h3>Popup Option A: Segmented Toggle</h3>
+            <p>A compact control above the durations. Clear, fast, and easy to learn.</p>
+          </div>
+          <span class="badge recommended">Recommended</span>
+        </div>
+
+        <div class="window popup">
+          <div class="window-bar">
+            <span>Popup</span>
+            <div class="window-dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="window-body">
+            <div class="popup-title">
+              <h4>Strict Session</h4>
+              <p>Choose your session type, then start a timer.</p>
+            </div>
+
+            <div class="control-row">
+              <button class="pill is-active">Allow</button>
+              <button class="pill">Blocked</button>
+            </div>
+
+            <div class="summary-strip">
+              Allow mode is selected by default. Only sites on your Allow List stay open while the session runs.
+            </div>
+
+            <div class="duration-grid">
+              <button class="primary">10 mins</button>
+              <button>20 mins</button>
+              <button>30 mins</button>
+              <button>1 hour</button>
+              <button>2 hours</button>
+              <button>3 hours</button>
+              <button>4 hours</button>
+              <button>Custom</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="design-notes">
+          <div class="design-note">Matches the current popup structure with the least disruption.</div>
+          <div class="design-note">Mode choice happens right before session start, which is exactly when users care.</div>
+        </div>
+      </article>
+
+      <article class="showcase">
+        <div class="showcase-meta">
+          <div>
+            <h3>Popup Option B: Two Start Cards</h3>
+            <p>Make each session type explicit as its own action surface.</p>
+          </div>
+          <span class="badge">Alternative</span>
+        </div>
+
+        <div class="window popup">
+          <div class="window-bar">
+            <span>Popup</span>
+            <div class="window-dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="window-body">
+            <div class="popup-title">
+              <h4>Pick a session style</h4>
+              <p>This makes the difference between modes obvious, but uses more space.</p>
+            </div>
+
+            <div class="mode-card-grid">
+              <div class="mode-card is-accent">
+                <strong>Allow Session</strong>
+                <span>Everything is blocked except the sites in Allow List.</span>
+                <button>Start in Allow Mode</button>
+              </div>
+              <div class="mode-card">
+                <strong>Blocked Session</strong>
+                <span>Only sites in Blocked List are blocked. Everything else stays available.</span>
+                <button>Start in Blocked Mode</button>
+              </div>
+            </div>
+
+            <div class="duration-grid">
+              <button class="primary">10 mins</button>
+              <button>20 mins</button>
+              <button>30 mins</button>
+              <button>1 hour</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="design-notes">
+          <div class="design-note">Best when the product wants to teach the two mental models very explicitly.</div>
+          <div class="design-note">Feels a little large for the current compact popup footprint.</div>
+        </div>
+      </article>
+
+      <article class="showcase">
+        <div class="showcase-meta">
+          <div>
+            <h3>Popup Option C: Settings Default Only</h3>
+            <p>The popup stays almost unchanged and simply uses the mode set in options.</p>
+          </div>
+          <span class="badge">Alternative</span>
+        </div>
+
+        <div class="window popup">
+          <div class="window-bar">
+            <span>Popup</span>
+            <div class="window-dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="window-body">
+            <div class="popup-title">
+              <h4>Strict Session</h4>
+              <p>Popup stays minimal, but mode changes require visiting settings first.</p>
+            </div>
+
+            <div class="summary-strip">
+              Current default: <strong>Allow List</strong><br>
+              Change session type in Settings if you want to use Blocked List instead.
+            </div>
+
+            <div class="duration-grid">
+              <button class="primary">10 mins</button>
+              <button>20 mins</button>
+              <button>30 mins</button>
+              <button>1 hour</button>
+              <button>2 hours</button>
+              <button>3 hours</button>
+              <button>4 hours</button>
+              <button>Custom</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="design-notes">
+          <div class="design-note">Simplest UI, but slower for users who want to switch modes from session to session.</div>
+          <div class="design-note">Works best only if most people rarely move between Allow and Blocked mode.</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="table-card">
+      <div class="section-head" style="margin-top:0;">
+        <div>
+          <h2>Behavior and Storage Decisions</h2>
+          <p>
+            These are the underlying product rules the UI is expressing. Writing them down keeps the design aligned with
+            the extension logic.
+          </p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Topic</th>
+            <th>Decision</th>
+            <th>Why it fits this extension</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Default mode</strong></td>
+            <td>Keep <strong>Allow List</strong> as the default selected tab, default popup mode, and default stored preference.</td>
+            <td>It preserves current behavior and avoids surprising existing users.</td>
+          </tr>
+          <tr>
+            <td><strong>New data</strong></td>
+            <td>Add a second array for <strong>blockedList</strong> plus a stored mode value such as <strong>sessionMode</strong>.</td>
+            <td>The current extension already stores allowedList, so this is the smallest clean extension of the model.</td>
+          </tr>
+          <tr>
+            <td><strong>Allow mode logic</strong></td>
+            <td>Keep the current rule system: redirect everything during a session, then add allow rules for each allowed domain.</td>
+            <td>No migration risk for existing users.</td>
+          </tr>
+          <tr>
+            <td><strong>Blocked mode logic</strong></td>
+            <td>Reverse the matching strategy: only redirect main-frame requests that match entries in blockedList.</td>
+            <td>Technically simple with the same declarative net request approach already used in the background worker.</td>
+          </tr>
+          <tr>
+            <td><strong>Blocked list privacy</strong></td>
+            <td>Hide blocked entries by default in settings with a local eye-toggle state that resets when the page reopens.</td>
+            <td>Users get privacy without creating a persistent hidden-state setting.</td>
+          </tr>
+          <tr>
+            <td><strong>Popup recommendation</strong></td>
+            <td>Use a segmented Allow / Blocked selector directly above the duration buttons.</td>
+            <td>It adds one fast decision point without changing the flow of starting a session.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="notes-card">
+      <div class="section-head" style="margin-top:0;">
+        <div>
+          <h2>Implementation Notes To Pair With The Designs</h2>
+          <p>
+            These notes bridge the visuals back to the repo so the next step from mockup to code is straightforward.
+          </p>
+        </div>
+      </div>
+
+      <div class="notes-grid">
+        <section>
+          <h3>Options Page</h3>
+          <ul>
+            <li>Reuse the current input and list rendering structure, but parameterize it by active tab.</li>
+            <li>Add a small tab state layer so the page can swap titles, helper copy, empty states, and active list.</li>
+            <li>Apply the eye toggle only to Blocked List content and default it to hidden on every page load.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Popup</h3>
+          <ul>
+            <li>Show the current mode prominently before users choose a duration.</li>
+            <li>If segmented toggle is used, keep Allow active by default and mirror the selection into session start messages.</li>
+            <li>Small helper text under the toggle can explain the selected mode in one sentence.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Background Logic</h3>
+          <ul>
+            <li>Carry both lists in storage, normalize both lists the same way, and decide which rule set to apply from sessionMode.</li>
+            <li>Allow mode remains catch-all redirect plus allow exceptions.</li>
+            <li>Blocked mode becomes domain-specific redirect rules with no global redirect rule.</li>
+          </ul>
+        </section>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      File made as a standalone exploration artifact so the design direction is visible before the extension screens are rewritten.
+    </p>
+  </main>
+
+  <script>
+    document.querySelectorAll("[data-tabs]").forEach((tabGroup) => {
+      const triggers = Array.from(tabGroup.querySelectorAll("[data-tab-trigger]"));
+      const container = tabGroup.closest(".window-body");
+      const panels = Array.from(container.querySelectorAll("[data-tab-panel]"));
+      const copy = container.querySelector(".support-copy");
+
+      function setActive(name) {
+        triggers.forEach((trigger) => {
+          trigger.classList.toggle("is-active", trigger.dataset.tabTrigger === name);
+        });
+
+        panels.forEach((panel) => {
+          panel.classList.toggle("is-active", panel.dataset.tabPanel === name);
+        });
+
+        if (!copy) return;
+        copy.textContent =
+          name === "allow"
+            ? "In Allow mode, everything is blocked during a session except the domains listed here. This stays as the default setup."
+            : "In Blocked mode, only the domains listed here are blocked during a session. This list stays hidden until you reveal it.";
+      }
+
+      triggers.forEach((trigger) => {
+        trigger.addEventListener("click", () => setActive(trigger.dataset.tabTrigger));
+      });
+    });
+
+    document.querySelectorAll("[data-privacy-toggle]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const scope = button.closest(".window-body") || button.closest(".list-wrap") || document;
+        const panel =
+          scope.querySelector("[data-tab-panel=\"blocked\"] [data-privacy-panel]") ||
+          scope.querySelector("[data-privacy-panel]");
+
+        if (!panel) return;
+        panel.classList.toggle("is-hidden");
+      });
+    });
+  </script>
+</body>
+</html>

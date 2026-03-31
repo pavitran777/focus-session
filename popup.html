@@ -12,18 +12,18 @@
 <body>
   <div class="container">
     <h1>Strict Session</h1>
-    <p class="subtitle">Deep focus session with no distractions. Blocks access to websites except your Allowed List
-      until the timer ends.</p>
+    <p class="subtitle">Deep focus session with no distractions.</p>
 
-    <div class="card link" id="allowed-link">
+    <div class="card link" id="lists-link">
       <div>
-        <div class="title">Allowed List</div>
-        <div class="small" id="allowed-count">–</div>
+        <div class="title">Access Rules</div>
+        <div class="small" id="list-summary">–</div>
       </div>
       <div class="chevron">›</div>
     </div>
 
     <div id="active" class="active hidden">
+      <div class="mode-badge" id="active-mode-label">Allow List Active</div>
       <div class="ring">
         <svg viewBox="0 0 160 160" width="240" height="240" aria-hidden="true">
           <circle class="track" cx="80" cy="80" r="70"></circle>
@@ -31,9 +31,15 @@
           <text id="time" x="80" y="88" text-anchor="middle">--:--</text>
         </svg>
       </div>
+      <p class="mode-copy active-copy" id="active-mode-copy"></p>
     </div>
 
     <div id="start" class="start">
+      <div class="mode-switch" role="tablist" aria-label="Session type">
+        <button type="button" class="mode-button active" data-mode="allow" aria-selected="true">Allow List</button>
+        <button type="button" class="mode-button" data-mode="blocked" aria-selected="false">Blocked List</button>
+      </div>
+      <p class="mode-copy" id="mode-copy">Only sites on your Allow List stay available during this session.</p>
       <div class="grid">
         <button data-mins="1">1 min</button>
         <button data-mins="10">10 mins</button>
