@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Strict Focus - Time to Lock In",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Blocks sites using your Allow List or Blocked List during focus sessions. Shows a countdown timer on blocked pages.",
   "permissions": [
     "declarativeNetRequest",

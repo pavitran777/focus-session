@@ -150,9 +150,69 @@ function isSessionActive(state) {
   return Boolean(state && state.strictActive && state.endTime > Date.now());
 }
 
-function getBlockedUrl() {
+function getDynamicRuleBlockedUrl() {
   const blockedUrl = chrome.runtime.getURL("blocked/blocked.html");
   return `${blockedUrl}?previousUrl=\\0`;
+}
+
+function getBlockedPageUrl(previousUrl) {
+  const blockedUrl = chrome.runtime.getURL("blocked/blocked.html");
+  return previousUrl
+    ? `${blockedUrl}?previousUrl=${encodeURIComponent(previousUrl)}`
+    : blockedUrl;
+}
+
+function isBlockedPageUrl(url) {
+  return Boolean(url && url.startsWith(chrome.runtime.getURL("blocked/blocked.html")));
+}
+
+function isHttpUrl(url) {
+  return /^https?:\/\//i.test(url);
+}
+
+function isFileUrl(url) {
+  return /^file:\/\//i.test(url);
+}
+
+function getUrlHostname(url) {
+  try {
+    return normalizeDomain(new URL(url).hostname);
+  } catch {
+    return "";
+  }
+}
+
+function matchesDomain(hostname, domain) {
+  return hostname === domain || hostname.endsWith(`.${domain}`);
+}
+
+function listContainsHostname(list, hostname) {
+  return list.some((domain) => matchesDomain(hostname, domain));
+}
+
+function shouldBlockUrl(url, state) {
+  if (!isSessionActive(state) || !url || isBlockedPageUrl(url)) {
+    return false;
+  }
+
+  const mode = normalizeSessionMode(state.sessionMode);
+
+  if (isFileUrl(url)) {
+    return mode === SESSION_MODE_ALLOW;
+  }
+
+  if (!isHttpUrl(url)) {
+    return false;
+  }
+
+  const hostname = getUrlHostname(url);
+  if (!hostname) {
+    return false;
+  }
+
+  return mode === SESSION_MODE_BLOCKED
+    ? listContainsHostname(state.blockedList, hostname)
+    : !listContainsHostname(state.allowedList, hostname);
 }
 
 function escapeForRegex(value) {
@@ -163,7 +223,7 @@ function createRedirectAction() {
   return {
     type: "redirect",
     redirect: {
-      regexSubstitution: getBlockedUrl()
+      regexSubstitution: getDynamicRuleBlockedUrl()
     }
   };
 }
@@ -227,6 +287,20 @@ async function clearRules() {
   if (existing.length) {
     await chrome.declarativeNetRequest.updateDynamicRules({ addRules: [], removeRuleIds: existing.map(r => r.id) });
   }
+}
+
+async function enforceTab(tabId, url, state = null) {
+  if (typeof tabId !== "number" || !url) {
+    return false;
+  }
+
+  const activeState = state || await getLiveState();
+  if (!shouldBlockUrl(url, activeState)) {
+    return false;
+  }
+
+  await chrome.tabs.update(tabId, { url: getBlockedPageUrl(url) });
+  return true;
 }
 
 async function startSession(durationMs) {
@@ -328,6 +402,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
   })();
   return true; // keep message channel open for async response
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (!changeInfo.url && changeInfo.status !== "loading") {
+    return;
+  }
+
+  const nextUrl = changeInfo.url || tab.pendingUrl || tab.url;
+  if (!nextUrl) {
+    return;
+  }
+
+  void enforceTab(tabId, nextUrl);
+});
+
+chrome.tabs.onReplaced.addListener(async (addedTabId) => {
+  try {
+    const tab = await chrome.tabs.get(addedTabId);
+    void enforceTab(addedTabId, tab.pendingUrl || tab.url);
+  } catch { }
 });
 
 void syncActionAppearance();
