@@ -70,25 +70,35 @@ h1 {
   gap: 6px;
   padding: 6px;
   margin-bottom: 10px;
-  border: 1px solid #e7e7e7;
+  border: 1px solid #e2e2e2;
   border-radius: 14px;
-  background: #fafafa;
+  background: #f3f3f3;
 }
 
 .mode-button {
   flex: 1 1 0;
   border-radius: 10px;
-  border: 0;
+  border: 1px solid transparent;
   background: transparent;
   color: #666;
   font-size: 13px;
   font-weight: 700;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.mode-button:hover {
+  background: rgba(255,255,255,0.55);
 }
 
 .mode-button.active {
   background: #fff;
   color: #111;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  border-color: #d4d4d4;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+.mode-button.active:hover {
+  background: #fff;
 }
 
 .mode-copy {
