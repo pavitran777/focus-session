@@ -109,29 +109,51 @@ h1 {
 }
 
 .mode-button {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 100%;
-  min-height: 46px;
-  padding: 9px 8px;
+  height: 46px;
+  min-height: 0;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 16px;
   color: var(--text);
   text-align: center;
   background: var(--panel);
-  box-shadow: 0 5px 14px rgba(30, 82, 51, 0.05);
   font-size: 12px;
   font-weight: 780;
-  line-height: 1;
-  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none;
+  transition: background-color 160ms ease, border-color 160ms ease;
   backdrop-filter: blur(10px);
 }
 
-.mode-button:hover { background: var(--panel-strong); }
+.mode-button-label {
+  display: block;
+  height: 44px;
+  line-height: 44px;
+  position: relative;
+  top: 0;
+  transform: translateY(0) !important;
+}
+
+.mode-button,
+.mode-button:hover,
+.mode-button:active,
+.mode-button:focus,
+.mode-button:focus-visible,
+.mode-button.active {
+  position: relative;
+  top: 0;
+  transform: translateY(0) !important;
+  transition: none;
+}
+.mode-button:hover,
+.mode-button:active { background: var(--panel-strong); box-shadow: none; }
 .mode-button.active {
   border-color: var(--accent);
   background: var(--panel-strong);
-  box-shadow: 0 8px 18px rgba(30, 82, 51, 0.12), inset 0 0 0 1px var(--accent-soft);
+  box-shadow: none;
 }
 
 .mode-copy {

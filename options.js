@@ -27,6 +27,7 @@ const LIST_CONFIG = {
 };
 
 let activeTab = SESSION_MODE_ALLOW;
+let blockedListVisible = false;
 let listsState = {
   [SESSION_MODE_ALLOW]: [],
   [SESSION_MODE_BLOCKED]: []
@@ -66,6 +67,22 @@ function getActiveList() {
   return listsState[activeTab];
 }
 
+function updateBlockedListVisibility() {
+  const visibilityBtn = document.getElementById("visibilityBtn");
+  const listWrap = document.getElementById("listWrap");
+  const listMask = document.getElementById("listMask");
+  const isBlockMode = activeTab === SESSION_MODE_BLOCKED;
+  const isHidden = isBlockMode && !blockedListVisible;
+
+  visibilityBtn.classList.toggle("hidden-control", !isBlockMode);
+  visibilityBtn.classList.toggle("is-active", isBlockMode && blockedListVisible);
+  visibilityBtn.setAttribute("aria-pressed", String(isBlockMode && blockedListVisible));
+  visibilityBtn.setAttribute("aria-label", blockedListVisible ? "Hide Block List" : "Show Block List");
+  visibilityBtn.setAttribute("title", blockedListVisible ? "Hide Block List" : "Show Block List");
+  listWrap.classList.toggle("masked", isHidden);
+  listMask.classList.toggle("hidden", !isHidden);
+}
+
 function render(list) {
   const ul = document.getElementById("list");
   ul.innerHTML = "";
@@ -74,6 +91,7 @@ function render(list) {
     li.className = "empty";
     li.textContent = LIST_CONFIG[activeTab].empty;
     ul.appendChild(li);
+    updateBlockedListVisibility();
     return;
   }
   list.forEach((domain, idx) => {
@@ -93,6 +111,7 @@ function render(list) {
     li.appendChild(remove);
     ul.appendChild(li);
   });
+  updateBlockedListVisibility();
 }
 
 function updateView() {
@@ -137,6 +156,7 @@ const settingsBtn = document.getElementById("settingsBtn");
 const settingsMenu = document.getElementById("settingsMenu");
 const clearAllBtn = document.getElementById("clearAll");
 const donateBtn = document.getElementById("donate");
+const visibilityBtn = document.getElementById("visibilityBtn");
 
 function closeMenu() {
   settingsMenu.classList.add("hidden");
@@ -166,6 +186,11 @@ clearAllBtn.addEventListener("click", async () => {
 donateBtn.addEventListener("click", () => {
   window.open(DONATE_URL, "_blank", "noopener,noreferrer");
   closeMenu();
+});
+
+visibilityBtn.addEventListener("click", () => {
+  blockedListVisible = !blockedListVisible;
+  updateBlockedListVisibility();
 });
 
 document.querySelectorAll("[data-tab]").forEach((tab) => {

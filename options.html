@@ -19,10 +19,17 @@
       </div>
 
       <div class="head-actions">
-        <button id="settingsBtn" class="icon-btn" aria-label="Settings" title="Settings">
+        <button id="visibilityBtn" class="icon-btn hidden-control" type="button" aria-label="Show Block List" title="Show Block List" aria-pressed="false">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 3.25l1.2 1.01 1.59-.14.78 1.4 1.5.56-.16 1.56 1.04 1.18-1.04 1.18.16 1.56-1.5.56-.78 1.4-1.59-.14L12 18.75l-1.2-1.01-1.59.14-.78-1.4-1.5-.56.16-1.56L6.05 12l1.04-1.18-.16-1.56 1.5-.56.78-1.4 1.59.14L12 3.25z"></path>
-            <circle cx="12" cy="12" r="2.85"></circle>
+            <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+        <button id="settingsBtn" class="icon-btn" aria-label="More options" title="More options">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>
+            <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>
           </svg>
         </button>
       </div>
@@ -46,6 +53,10 @@
 
     <div id="listWrap" class="list-wrap">
       <div class="list-heading" id="listHeading">Allow List</div>
+      <div id="listMask" class="list-mask hidden">
+        <strong>Block List is hidden</strong>
+        <span>Use the eye button above to show it</span>
+      </div>
       <ul id="list"></ul>
     </div>
   </div>
