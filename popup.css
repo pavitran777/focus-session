@@ -32,7 +32,6 @@ body[data-mode="blocked"] {
   --panel-strong: rgba(31, 26, 68, 0.86);
   --border: rgba(238, 218, 255, 0.22);
   --shadow: 0 14px 32px rgba(8, 5, 31, 0.35);
-  color-scheme: dark;
   background-color: #201646;
   background-image: url("assets/blocked-twilight.png");
 }
@@ -129,11 +128,14 @@ h1 {
 }
 
 .mode-button-label {
-  display: block;
-  height: 44px;
-  line-height: 44px;
-  position: relative;
-  top: 0;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  line-height: 1;
+  pointer-events: none;
   transform: translateY(0) !important;
 }
 

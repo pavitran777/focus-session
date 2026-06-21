@@ -1,7 +1,7 @@
 const ALL_RULE_ID = 1;
 const ALLOW_BASE_ID = 1000;
 const BLOCK_BASE_ID = 2000;
-const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com", "chat.openai.com"];
+const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com", "chat.openai.com", "claude.ai"];
 const BLOCKED_DEFAULT = [];
 const SESSION_MODE_ALLOW = "allow";
 const SESSION_MODE_BLOCKED = "blocked";

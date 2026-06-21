@@ -1,4 +1,4 @@
-const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com", "chat.openai.com"];
+const ALLOWED_DEFAULT = ["chatgpt.com", "google.com", "youtube.com", "chat.openai.com", "claude.ai"];
 const BLOCKED_DEFAULT = [];
 const SESSION_MODE_ALLOW = "allow";
 const SESSION_MODE_BLOCKED = "blocked";
