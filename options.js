@@ -6,26 +6,27 @@ const DONATE_URL = "https://buymeacoffee.com/devitzo";
 const LIST_CONFIG = {
   [SESSION_MODE_ALLOW]: {
     storageKey: "allowedList",
-    title: "Allow List",
-    subtitle: "Add the sites you want available during a Strict Session.",
+    subtitle: "Block all sites except the ones below.",
     placeholder: "e.g. chatgpt.com",
-    empty: "No allowed websites yet. Add some above.",
+    fieldLabel: "Allow List",
+    listHeading: "Allow List",
+    empty: "No sites in your Allow List.",
     clearLabel: "Clear Allow List",
-    clearConfirm: "Are you sure you want to clear the Allow List? During a Strict Session, all websites will be blocked until you add sites back."
+    clearConfirm: "Are you sure you want to clear these sites? During a focus session, every website will be paused until you add sites back."
   },
   [SESSION_MODE_BLOCKED]: {
     storageKey: "blockedList",
-    title: "Blocked List",
-    subtitle: "Add the sites you want blocked during a Strict Session.",
+    subtitle: "Block only the sites below.",
     placeholder: "e.g. reddit.com",
-    empty: "No blocked websites yet. Add some above.",
-    clearLabel: "Clear Blocked List",
-    clearConfirm: "Are you sure you want to clear the Blocked List? No sites will be blocked until you add some back."
+    fieldLabel: "Block List",
+    listHeading: "Block List",
+    empty: "No sites in your Block List.",
+    clearLabel: "Clear Block List",
+    clearConfirm: "Are you sure you want to clear these sites? During a focus session, no websites will be paused until you add some back."
   }
 };
 
 let activeTab = SESSION_MODE_ALLOW;
-let blockedListVisible = false;
 let listsState = {
   [SESSION_MODE_ALLOW]: [],
   [SESSION_MODE_BLOCKED]: []
@@ -65,21 +66,6 @@ function getActiveList() {
   return listsState[activeTab];
 }
 
-function updateMaskedState() {
-  const visibilityBtn = document.getElementById("visibilityBtn");
-  const listWrap = document.getElementById("listWrap");
-  const listMask = document.getElementById("listMask");
-  const isBlockedTab = activeTab === SESSION_MODE_BLOCKED;
-  const isHidden = isBlockedTab && !blockedListVisible;
-
-  visibilityBtn.classList.toggle("hidden-control", !isBlockedTab);
-  visibilityBtn.classList.toggle("is-active", isBlockedTab && blockedListVisible);
-  visibilityBtn.setAttribute("aria-label", blockedListVisible ? "Hide blocked list" : "Show blocked list");
-  visibilityBtn.setAttribute("title", blockedListVisible ? "Hide blocked list" : "Show blocked list");
-  listWrap.classList.toggle("masked", isHidden);
-  listMask.classList.toggle("hidden", !isHidden);
-}
-
 function render(list) {
   const ul = document.getElementById("list");
   ul.innerHTML = "";
@@ -88,7 +74,6 @@ function render(list) {
     li.className = "empty";
     li.textContent = LIST_CONFIG[activeTab].empty;
     ul.appendChild(li);
-    updateMaskedState();
     return;
   }
   list.forEach((domain, idx) => {
@@ -108,7 +93,6 @@ function render(list) {
     li.appendChild(remove);
     ul.appendChild(li);
   });
-  updateMaskedState();
 }
 
 function updateView() {
@@ -116,7 +100,10 @@ function updateView() {
 
   document.getElementById("subtitle").textContent = config.subtitle;
   document.getElementById("domain").placeholder = config.placeholder;
+  document.getElementById("domainLabel").textContent = config.fieldLabel;
+  document.getElementById("listHeading").textContent = config.listHeading;
   document.getElementById("clearAll").textContent = config.clearLabel;
+  document.body.dataset.mode = activeTab;
 
   document.querySelectorAll("[data-tab]").forEach((tab) => {
     const isActive = tab.dataset.tab === activeTab;
@@ -150,7 +137,6 @@ const settingsBtn = document.getElementById("settingsBtn");
 const settingsMenu = document.getElementById("settingsMenu");
 const clearAllBtn = document.getElementById("clearAll");
 const donateBtn = document.getElementById("donate");
-const visibilityBtn = document.getElementById("visibilityBtn");
 
 function closeMenu() {
   settingsMenu.classList.add("hidden");
@@ -180,11 +166,6 @@ clearAllBtn.addEventListener("click", async () => {
 donateBtn.addEventListener("click", () => {
   window.open(DONATE_URL, "_blank", "noopener,noreferrer");
   closeMenu();
-});
-
-visibilityBtn.addEventListener("click", () => {
-  blockedListVisible = !blockedListVisible;
-  updateMaskedState();
 });
 
 document.querySelectorAll("[data-tab]").forEach((tab) => {

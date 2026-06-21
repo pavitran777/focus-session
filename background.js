@@ -6,7 +6,7 @@ const BLOCKED_DEFAULT = [];
 const SESSION_MODE_ALLOW = "allow";
 const SESSION_MODE_BLOCKED = "blocked";
 const ALARM_NAME = "strict-session-end";
-const DEFAULT_ACTION_TITLE = "Strict Session";
+const DEFAULT_ACTION_TITLE = "Strict Focus";
 const ACTION_ICON_PATHS = {
   16: "icons/icon16.png",
   32: "icons/icon32.png",

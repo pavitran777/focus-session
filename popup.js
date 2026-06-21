@@ -33,35 +33,39 @@ async function getState() {
 }
 
 function getModeLabel(mode) {
-  return normalizeSessionMode(mode) === SESSION_MODE_BLOCKED ? "Blocked List" : "Allow List";
+  return normalizeSessionMode(mode) === SESSION_MODE_BLOCKED
+    ? "Block Only"
+    : "Allow Only";
 }
 
 function getModeCopy(mode) {
   return normalizeSessionMode(mode) === SESSION_MODE_BLOCKED
-    ? "Only sites on your Blocked List will be blocked during this session."
-    : "Only sites on your Allow List stay available during this session.";
+    ? "Block only sites in your Block List."
+    : "Block all sites except your Allow List.";
 }
 
 function setListSummary(state) {
   const el = document.getElementById("list-summary");
   const allowedCount = Array.isArray(state.allowedList) ? state.allowedList.length : 0;
   const blockedCount = Array.isArray(state.blockedList) ? state.blockedList.length : 0;
-  el.textContent = `Allow List: ${allowedCount} | Blocked List: ${blockedCount}`;
+  el.textContent = `Allow ${allowedCount} · Block ${blockedCount}`;
 }
 
 function setModeSelection(mode) {
   const normalizedMode = normalizeSessionMode(mode);
+  document.body.dataset.mode = normalizedMode;
   document.querySelectorAll("[data-mode]").forEach((button) => {
     const isActive = button.dataset.mode === normalizedMode;
     button.classList.toggle("active", isActive);
-    button.setAttribute("aria-selected", String(isActive));
+    button.setAttribute("aria-checked", String(isActive));
   });
   document.getElementById("mode-copy").textContent = getModeCopy(normalizedMode);
 }
 
 function setActiveMode(mode) {
   const label = getModeLabel(mode);
-  document.getElementById("active-mode-label").textContent = `${label} Active`;
+  document.body.dataset.mode = normalizeSessionMode(mode);
+  document.getElementById("active-mode-label").textContent = label;
   document.getElementById("active-mode-copy").textContent = getModeCopy(mode);
 }
 
