@@ -110,10 +110,10 @@ h1 { margin: 0 0 7px; font-size: 30px; line-height: 1.05; letter-spacing: -0.04e
   box-shadow: 0 7px 18px rgba(30, 82, 51, 0.06);
   font-size: 13px;
   font-weight: 780;
-  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
   backdrop-filter: blur(10px);
 }
-.tab:hover { transform: translateY(-1px); background: var(--panel-strong); }
+.tab:hover { background: var(--panel-strong); }
 .tab.active {
   border-color: var(--accent);
   background: var(--panel-strong);

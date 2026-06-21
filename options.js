@@ -6,7 +6,7 @@ const DONATE_URL = "https://buymeacoffee.com/devitzo";
 const LIST_CONFIG = {
   [SESSION_MODE_ALLOW]: {
     storageKey: "allowedList",
-    subtitle: "Block all sites except the ones below.",
+    subtitle: "Only sites on your Allow List stay available during this session",
     placeholder: "e.g. chatgpt.com",
     fieldLabel: "Allow List",
     listHeading: "Allow List",
@@ -16,7 +16,7 @@ const LIST_CONFIG = {
   },
   [SESSION_MODE_BLOCKED]: {
     storageKey: "blockedList",
-    subtitle: "Block only the sites below.",
+    subtitle: "Only sites on your Block List are blocked during this session",
     placeholder: "e.g. reddit.com",
     fieldLabel: "Block List",
     listHeading: "Block List",

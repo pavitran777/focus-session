@@ -40,8 +40,8 @@ function getModeLabel(mode) {
 
 function getModeCopy(mode) {
   return normalizeSessionMode(mode) === SESSION_MODE_BLOCKED
-    ? "Block only sites in your Block List."
-    : "Block all sites except your Allow List.";
+    ? "Only sites on your Block List are blocked during this session"
+    : "Only sites on your Allow List stay available during this session";
 }
 
 function setListSummary(state) {

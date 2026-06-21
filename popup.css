@@ -15,7 +15,6 @@ body {
   --border: rgba(28, 99, 60, 0.18);
   --shadow: 0 14px 32px rgba(30, 92, 55, 0.16);
   width: 360px;
-  min-height: 500px;
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: var(--text);
@@ -49,7 +48,6 @@ button:focus-visible,
 }
 
 .container {
-  min-height: 500px;
   padding: 20px 18px 18px;
   background: linear-gradient(155deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.04));
 }
@@ -124,11 +122,12 @@ h1 {
   box-shadow: 0 5px 14px rgba(30, 82, 51, 0.05);
   font-size: 12px;
   font-weight: 780;
-  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  line-height: 1;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
   backdrop-filter: blur(10px);
 }
 
-.mode-button:hover { transform: translateY(-1px); background: var(--panel-strong); }
+.mode-button:hover { background: var(--panel-strong); }
 .mode-button.active {
   border-color: var(--accent);
   background: var(--panel-strong);
@@ -136,20 +135,14 @@ h1 {
 }
 
 .mode-copy {
-  display: grid;
-  min-height: 34px;
-  place-items: center;
-  margin: 9px 0 0;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  height: 31px;
+  margin: 13px 0 0;
+  padding: 0;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.32);
   font-size: 11px;
   line-height: 1.4;
   text-align: center;
 }
-body[data-mode="blocked"] .mode-copy { background: rgba(11, 8, 35, 0.30); }
 
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
 .grid button {
